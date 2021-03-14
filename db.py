@@ -4,13 +4,15 @@ Supports following databases:
     -> Berkeley DB
     -> sqlite3
 
-Unit tests:
->>> with SubSQLite('/tmp/db') as data: 
+Example usage:
+>>> class MySQLite(SQLite): pass
+>>> with MySQLite('.') as data: 
 ...     data.open('games')
 ...     data.put('games','game1','germany')
 ...     data.get('games','game1')
 'germany'
->>> with SubBerkeley('/tmp/db') as data: 
+>>> class MyBerkeley(Berkeley): pass
+>>> with MyBerkeley('.') as data:
 ...     data.open('games')
 ...     data.put('games','game1','germany')
 ...     data.get('games','game1')
@@ -49,9 +51,13 @@ class Data():
         pass
 
     def put(self,name,key,data):
+        if not name in self.tables:
+            self.open(name)
         self.tables[name].put(key,data)
 
     def get(self,name,key):
+        if not name in self.tables:
+            self.open(name)
         value = self.tables[name].get(key)
         return value
 
@@ -278,22 +284,14 @@ class SQLTable(Table):
 
     def get(self,key):
         stmt = "SELECT value FROM {0} WHERE key=?".format(self.name)
-        a = self.cur.execute(stmt, (key,))
-        return a.fetchone()[0]
+        a = self.cur.execute(stmt, (key,)).fetchone()
+        if a: 
+            return a[0]
 
     def delete(self,key):
         stmt = "DELETE FROM {0} WHERE key=?".format(self.name)
         self.cur.execute(stmt, (key,))
 
-### Copy these types of classes to your program to create specific database connection
-
-#Simple Berkeley DB class
-class SubBerkeley(Berkeley):
-    pass
-
-#Simple SQLite DB class
-class SubSQLite(SQLite):
-    pass
 
 #Berkeley DB class instance with your own with statements
 class AmendBerkeley(Berkeley):
