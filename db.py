@@ -84,7 +84,7 @@ class Data():
 
     def assert_exist(self,table):
         if not table in self.tables:
-            self.open(name)
+            self.open(table)
 
 class Index():
     '''Helper class for Berkeley DB index instances.'''
