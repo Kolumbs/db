@@ -51,17 +51,16 @@ class Data():
         pass
 
     def put(self,name,key,data):
-        if not name in self.tables:
-            self.open(name)
+        self.assert_exist(name)
         self.tables[name].put(key,data)
 
     def get(self,name,key):
-        if not name in self.tables:
-            self.open(name)
+        self.assert_exist(name)
         value = self.tables[name].get(key)
         return value
 
     def delete(self,name,key):
+        self.assert_exist(name)
         key = str(key).encode()
         self.tables[name].delete(key)
 
@@ -69,6 +68,7 @@ class Data():
         self.tables[name].verify(name+'.db')
 
     def table(self,name,**key):
+        self.assert_exist(name)
         if not key:
             return self.tables[name]
         table = self.tables[name]
@@ -81,6 +81,10 @@ class Data():
     def open(self,name,db_obj):
         new_table = db_obj
         self.tables[name] = new_table
+
+    def assert_exist(self,table):
+        if not table in self.tables:
+            self.open(name)
 
 class Index():
     '''Helper class for Berkeley DB index instances.'''
