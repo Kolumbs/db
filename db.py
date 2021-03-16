@@ -259,12 +259,12 @@ class SQLTable(Table):
         self.db = db
     
     def __len__(self):
-        stmt = "SELECT COUNT(*) FROM {0}".format(self.name)
+        stmt = "SELECT COUNT(*) FROM {0};".format(self.name)
         return self.cur.execute(stmt).fetchone()[0]
 
     def __next__(self):
         if not self.cursor:
-            stmt = "SELECT key,value FROM {0}".format(self.name)
+            stmt = "SELECT key,value FROM {0};".format(self.name)
             self.cursor = self.cur.execute(stmt)
         item = self.cursor.fetchone()
         if not item:
@@ -283,38 +283,39 @@ class SQLTable(Table):
 
     def get(self,key):
         key = str(key)
-        stmt = "SELECT value FROM {0} WHERE key=?".format(self.name)
+        stmt = "SELECT value FROM {0} WHERE key=?;".format(self.name)
         a = self.cur.execute(stmt, (key,)).fetchone()
         if a: 
             return a[0]
 
     def delete(self,key):
         key = str(key)
-        stmt = "DELETE FROM {0} WHERE key=?".format(self.name)
+        stmt = "DELETE FROM {0} WHERE key=?;".format(self.name)
         self.cur.execute(stmt, (key,))
 
     def add_index(self,index):
         '''adds index to table, can be as many as one likes
         index_callback must be Python callable object that will construct and return secondary key.
         '''
-        if index in self.tables:
-            raise 'Index name shall not be the same as table name itself'
-        setattr(self,  index, Index())
-        instance = getattr(self, index)
-        self.indexes.append(instance)
+        if index in self.__dict__['indexes']:
+            raise 'Index already exists'
+        stmt = "ALTER TABLE {0} ADD COLUMN ?;".format(self.name)
+        self.cur.execute(stmt, (index,))
+        self.db.commit()
+        self.__dict__['indexes'].append(index, Index())
 
     def sql_statement(self,mode,key,value,**indexes):
         if mode == 'INSERT':
-            stmt = "INSERT INTO {0} VALUES (?,?)".format(self.name)
+            stmt = "INSERT INTO {0} VALUES (?,?);".format(self.name)
+            self.cur.execute(stmt, (key,data))
         elif mode == 'UPDATE':
-            stmt = "UPDATE {0} SET key=?, value=? WHERE key=?".format(self.name)
+            stmt = "UPDATE {0} SET key=?, value=? WHERE key=?;".format(self.name)
+            self.cur.execute(stmt, (key,data,key))
         if indexes:
-            '''this needs further work here'''
             for index in indexes:
-                index = gettattr(self, index)
-            self.cur.execute(stmt, (key,data,key))
-        else:
-            self.cur.execute(stmt, (key,data,key))
+                '''Each index updates entry in a specific column'''
+                stmt = "UPDATE {0} SET ?=? WHERE key=?;".format(self.name)
+                self.cur.execute(stmt, (index,indexes[index],key))
         self.db.commit()
 
 
