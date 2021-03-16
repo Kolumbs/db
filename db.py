@@ -278,6 +278,8 @@ class SQLTable(Table):
         return item
 
     def put(self,key,data):
+        key = str(key)
+        data = str(data)
         if not self.get(key):
             stmt = "INSERT INTO {0} VALUES (?,?)".format(self.name)
             self.cur.execute(stmt, (key,data))
@@ -287,12 +289,14 @@ class SQLTable(Table):
         self.db.commit()
 
     def get(self,key):
+        key = str(key)
         stmt = "SELECT value FROM {0} WHERE key=?".format(self.name)
         a = self.cur.execute(stmt, (key,)).fetchone()
         if a: 
             return a[0]
 
     def delete(self,key):
+        key = str(key)
         stmt = "DELETE FROM {0} WHERE key=?".format(self.name)
         self.cur.execute(stmt, (key,))
 
