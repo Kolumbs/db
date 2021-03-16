@@ -242,10 +242,6 @@ class SQLite(Data):
         self.db.commit()
         self.db.close()
 
-    def add_index(self,index,index_callback,table):
-        '''adds index  to database'''
-        pass
-
     def open(self,name):
         if not self.cur.execute('''SELECT * FROM sqlite_master WHERE type='table' AND name=?''', (name,)).fetchone():
             stmt = "CREATE TABLE {0} (key text, value text)".format(name)
@@ -277,16 +273,13 @@ class SQLTable(Table):
         key, value = item
         return item
 
-    def put(self,key,data):
+    def put(self,key,data,**indexes):
         key = str(key)
         data = str(data)
         if not self.get(key):
-            stmt = "INSERT INTO {0} VALUES (?,?)".format(self.name)
-            self.cur.execute(stmt, (key,data))
+            self.sql_statement("INSERT",key,data,**indexes)
         else:
-            stmt = "UPDATE {0} SET key=?, value=? WHERE key=?".format(self.name)
-            self.cur.execute(stmt, (key,data,key))
-        self.db.commit()
+            self.sql_statement("UPDATE",key,data,**indexes)
 
     def get(self,key):
         key = str(key)
@@ -299,6 +292,30 @@ class SQLTable(Table):
         key = str(key)
         stmt = "DELETE FROM {0} WHERE key=?".format(self.name)
         self.cur.execute(stmt, (key,))
+
+    def add_index(self,index):
+        '''adds index to table, can be as many as one likes
+        index_callback must be Python callable object that will construct and return secondary key.
+        '''
+        if index in self.tables:
+            raise 'Index name shall not be the same as table name itself'
+        setattr(self,  index, Index())
+        instance = getattr(self, index)
+        self.indexes.append(instance)
+
+    def sql_statement(self,mode,key,value,**indexes):
+        if mode == 'INSERT':
+            stmt = "INSERT INTO {0} VALUES (?,?)".format(self.name)
+        elif mode == 'UPDATE':
+            stmt = "UPDATE {0} SET key=?, value=? WHERE key=?".format(self.name)
+        if indexes:
+            '''this needs further work here'''
+            for index in indexes:
+                index = gettattr(self, index)
+            self.cur.execute(stmt, (key,data,key))
+        else:
+            self.cur.execute(stmt, (key,data,key))
+        self.db.commit()
 
 
 #Berkeley DB class instance with your own with statements
