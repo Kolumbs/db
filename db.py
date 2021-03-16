@@ -5,18 +5,17 @@ Supports following databases:
     -> sqlite3
 
 Example usage:
+>>> def procedures_with_database(db):
+...     data.open('games')
+...     data.put('games','game1','germany')
+...     assert data.get('games','game1') == 'germany'
+...     data.table('games').add_index('date')
 >>> class MySQLite(SQLite): pass
 >>> with MySQLite('.') as data: 
-...     data.open('games')
-...     data.put('games','game1','germany')
-...     data.get('games','game1')
-'germany'
+...     procedures_with_database(data)
 >>> class MyBerkeley(Berkeley): pass
 >>> with MyBerkeley('.') as data:
-...     data.open('games')
-...     data.put('games','game1','germany')
-...     data.get('games','game1')
-'germany'
+...     procedures_with_database(data)
 '''
 import os
 
@@ -307,10 +306,10 @@ class SQLTable(Table):
     def sql_statement(self,mode,key,value,**indexes):
         if mode == 'INSERT':
             stmt = "INSERT INTO {0} VALUES (?,?);".format(self.name)
-            self.cur.execute(stmt, (key,data))
+            self.cur.execute(stmt, (key,value))
         elif mode == 'UPDATE':
             stmt = "UPDATE {0} SET key=?, value=? WHERE key=?;".format(self.name)
-            self.cur.execute(stmt, (key,data,key))
+            self.cur.execute(stmt, (key,value,key))
         if indexes:
             for index in indexes:
                 '''Each index updates entry in a specific column'''
