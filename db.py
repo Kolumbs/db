@@ -41,7 +41,6 @@ class Data():
             os.mkdir(path)
         self.path = path
         self.tables = {}
-        self.indexes = {}
 
     def __enter__(self):
         return self
@@ -122,6 +121,7 @@ class Table():
     def __init__(self,name):
         self.name = name
         self.cursor = False
+        self.indexes = {}
 
     def __iter__(self):
         return self
