@@ -13,13 +13,11 @@ Example usage:
 ...     for i in data.table('games'):
 ...         print(i)
 >>> class MySQLite(SQLite): pass
->>> with MySQLite('/tmp/') as data: 
+>>> with MySQLite('.') as data: 
 ...     procedures_with_database(data)
-'Test'
 >>> class MyBerkeley(Berkeley): pass
 >>> with MyBerkeley('.') as data:
 ...     procedures_with_database(data)
-'Test'
 '''
 import os
 import syslog
@@ -303,16 +301,16 @@ class SQLTable(Table):
         '''
         if index in self.__dict__['indexes']:
             raise 'Index already exists'
-        else:
-            stmt = "SELECT {0} FROM {1}".format('key',self.name)
-            a = self.cur.execute(stmt).fetchone()
-            if a:
-                return
+        stmt = "PRAGMA table_info({0})".format(self.name)
+        col_list = self.cur.execute(stmt)
+        col = col_list.fetchone()
+        while col:
+            if col[1] == index: return
+            col = col_list.fetchone()
         stmt = "ALTER TABLE {0} ADD COLUMN {1};".format(self.name,index)
         self.cur.execute(stmt)
         self.db.commit()
-        syslog.syslog(self.__dict__['indexes'])
-        self.__dict__['indexes'].append(index, Index())
+        self.__dict__['indexes'][index] = Index()
 
     def sql_statement(self,mode,key,value,**indexes):
         if mode == 'INSERT':
