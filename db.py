@@ -10,14 +10,19 @@ Example usage:
 ...     data.put('games','game1','germany')
 ...     assert data.get('games','game1') == 'germany'
 ...     data.table('games').add_index('date')
+...     for i in data.table('games'):
+...         print(i)
 >>> class MySQLite(SQLite): pass
->>> with MySQLite('.') as data: 
+>>> with MySQLite('/tmp/') as data: 
 ...     procedures_with_database(data)
+'Test'
 >>> class MyBerkeley(Berkeley): pass
 >>> with MyBerkeley('.') as data:
 ...     procedures_with_database(data)
+'Test'
 '''
 import os
+import syslog
 
 def verify(db_file):
     '''Verifies database file.'''
@@ -298,9 +303,15 @@ class SQLTable(Table):
         '''
         if index in self.__dict__['indexes']:
             raise 'Index already exists'
-        stmt = "ALTER TABLE {0} ADD COLUMN ?;".format(self.name)
-        self.cur.execute(stmt, (index,))
+        else:
+            stmt = "SELECT {0} FROM {1}".format('key',self.name)
+            a = self.cur.execute(stmt).fetchone()
+            if a:
+                return
+        stmt = "ALTER TABLE {0} ADD COLUMN {1};".format(self.name,index)
+        self.cur.execute(stmt)
         self.db.commit()
+        syslog.syslog(self.__dict__['indexes'])
         self.__dict__['indexes'].append(index, Index())
 
     def sql_statement(self,mode,key,value,**indexes):
