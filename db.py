@@ -10,6 +10,7 @@ Example usage:
 ...     data.put('games','game1','germany')
 ...     assert data.get('games','game1') == 'germany'
 ...     data.table('games').add_index('date')
+...     data.put('games','game2','italy')
 ...     for i in data.table('games'):
 ...         print(i)
 >>> class MySQLite(SQLite): pass
