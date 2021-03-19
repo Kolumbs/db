@@ -11,7 +11,10 @@ Example usage:
 ...     assert data.get('games','game1') == 'germany'
 ...     data.table('games').add_index('date')
 ...     data.put('games','game2','italy')
+...     data.put('games','game2','italy',date='2020-10-26')
 ...     for i in data.table('games'):
+...         assert i[0] == 'game1' or i[1] == 'italy'
+...     for i in data.table('games', date='2020-10-26'):
 ...         print(i)
 >>> class MySQLite(SQLite): pass
 >>> with MySQLite('.') as data: 
@@ -54,9 +57,9 @@ class Data():
     def __exit__(self,exc_type, exc_value, traceback):
         pass
 
-    def put(self,name,key,data):
+    def put(self,name,key,data,**indexes):
         self.assert_exist(name)
-        self.tables[name].put(key,data)
+        self.tables[name].put(key,data,**indexes)
 
     def get(self,name,key):
         self.assert_exist(name)
@@ -76,11 +79,7 @@ class Data():
         if not key:
             return self.tables[name]
         table = self.tables[name]
-        while key:
-            k, v = key.popitem()
-            index_obj = getattr(table, k)
-            setattr(index_obj, 'cursor_value', v)
-            return index_obj
+        return key
 
     def open(self,name,db_obj):
         new_table = db_obj
@@ -92,6 +91,7 @@ class Data():
 
 class Index():
     '''Helper class for Berkeley DB index instances.'''
+
 
     def __iter__(self):
         return self
@@ -178,6 +178,17 @@ class Berkeley(Data):
     def __exit__(self,exc_type, exc_value, traceback):
         self.close()
 
+    def table(self,name,**key):
+        self.assert_exist(name)
+        if not key:
+            return self.tables[name]
+        table = self.tables[name]
+        while key:
+            k, v = key.popitem()
+            index_obj = getattr(table, k)
+            setattr(index_obj, 'cursor_value', v)
+            return index_obj
+
     def add_index(self,index,index_callback,table):
         '''adds index to table, can be as many as one likes
         index_callback must be Python callable object that will construct and return secondary key.
@@ -255,6 +266,15 @@ class SQLite(Data):
         new_table = SQLTable(name, self.cur, self.db)
         Data.open(self, name, new_table)
 
+    def table(self,name,**key):
+        self.assert_exist(name)
+        if not key:
+            return self.tables[name]
+        table = self.tables[name]
+        while key:
+            k, v = key.popitem()
+            return SQLiteIndex(k,v,table)
+
 
 class SQLTable(Table):
 
@@ -314,7 +334,7 @@ class SQLTable(Table):
                 stmt = "ALTER TABLE {0} ADD COLUMN {1};".format(self.name,index)
         self.cur.execute(stmt)
         self.db.commit()
-        self.__dict__['indexes'][index] = Index()
+        self.__dict__['indexes'][index] = True
 
     def sql_statement(self,mode,key,value,**indexes):
         if mode == 'INSERT':
@@ -326,9 +346,29 @@ class SQLTable(Table):
         if indexes:
             for index in indexes:
                 '''Each index updates entry in a specific column'''
-                stmt = "UPDATE {0} SET ?=? WHERE key=?;".format(self.name)
-                self.cur.execute(stmt, (index,indexes[index],key))
+                stmt = "UPDATE {0} SET {1}=? WHERE key=?;".format(self.name,index)
+                self.cur.execute(stmt, (indexes[index],key))
         self.db.commit()
+
+
+class SQLiteIndex(Index):
+    
+    
+    def __init__(self,column,col_val,table):
+        self.column = column
+        self.col_val = col_val
+        self.table = table
+        self.cursor = False
+    
+    def __next__(self):
+        if not self.cursor:
+            stmt = "SELECT key, value FROM {0} WHERE {1}={2};".format(self.table.name,self.column,self.col_val)
+            self.cursor = self.table.cur.execute(stmt)
+        item = self.cursor.fetchone()
+        if not item:
+            self.cursor = False
+            raise StopIteration
+        return item
 
 
 #Berkeley DB class instance with your own with statements
