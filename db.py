@@ -16,6 +16,8 @@ Example usage:
 >>> class MySQLite(SQLite): pass
 >>> with MySQLite('.') as data: 
 ...     procedures_with_database(data)
+('game1', 'germany')
+('game2', 'italy')
 >>> class MyBerkeley(Berkeley): pass
 >>> with MyBerkeley('.') as data:
 ...     procedures_with_database(data)
@@ -308,14 +310,15 @@ class SQLTable(Table):
         while col:
             if col[1] == index: return
             col = col_list.fetchone()
-        stmt = "ALTER TABLE {0} ADD COLUMN {1};".format(self.name,index)
+            if not col: 
+                stmt = "ALTER TABLE {0} ADD COLUMN {1};".format(self.name,index)
         self.cur.execute(stmt)
         self.db.commit()
         self.__dict__['indexes'][index] = Index()
 
     def sql_statement(self,mode,key,value,**indexes):
         if mode == 'INSERT':
-            stmt = "INSERT INTO {0} VALUES (?,?);".format(self.name)
+            stmt = "INSERT INTO {0} (key, value) VALUES (?,?);".format(self.name)
             self.cur.execute(stmt, (key,value))
         elif mode == 'UPDATE':
             stmt = "UPDATE {0} SET key=?, value=? WHERE key=?;".format(self.name)
